@@ -37,9 +37,22 @@ def main() -> int:
     os.chmod(OUTPUT_PATH, 0o644)
 
     # Read it back and validate exactly what the judge will see.
-    with open(OUTPUT_PATH, "r", encoding="utf-8") as handle:
-        text = handle.read()
+    with open(OUTPUT_PATH, "rb") as handle:
+        raw = handle.read()
 
+    # Byte-exact round trip: the file must be the entry text plus one
+    # trailing newline, nothing more, nothing less.
+    expected = (ENTRY_TEXT + "\n").encode("utf-8")
+    if raw != expected:
+        print("error: entry on disk differs from the entry text", file=sys.stderr)
+        return 1
+
+    # The grader reads the output as another user: confirm mode 0644.
+    if os.stat(OUTPUT_PATH).st_mode & 0o777 != 0o644:
+        print("error: %s is not mode 0644" % OUTPUT_PATH, file=sys.stderr)
+        return 1
+
+    text = raw.decode("utf-8")
     line = text.rstrip("\n")
     if not line or not line.strip():
         print("error: entry is empty or only whitespace", file=sys.stderr)
@@ -53,9 +66,6 @@ def main() -> int:
             % (len(line), MAX_CHARS),
             file=sys.stderr,
         )
-        return 1
-    if line != ENTRY_TEXT:
-        print("error: entry on disk differs from the entry text", file=sys.stderr)
         return 1
 
     print("entry (%d chars): %s" % (len(line), line))
